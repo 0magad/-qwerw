@@ -10,6 +10,11 @@ const io = new Server(server);
 // Раздаём статические файлы (ваш index.html и всё, что рядом)
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Обработчик корневого маршрута
+app.get('/', (req, res) => {
+    res.sendFile(__dirname + '/public/index.html');
+});
+
 io.on('connection', (socket) => {
   console.log('Пользователь подключился');
 
@@ -24,6 +29,6 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Сервер запущен: http://localhost:${PORT}`);
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`Сервер запущен на порту ${PORT}`);
 });
