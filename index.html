@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Matrix Pink Love</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: black;
+      overflow: hidden;
+      height: 100%;
+    }
+    canvas {
+      display: block;
+    }
+  </style>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+</head>
+<body>
+  <canvas id="matrix"></canvas>
+  <script>
+    const canvas = document.getElementById("matrix");
+    const ctx = canvas.getContext("2d");
+
+    const socket = io(); // подключение к серверу
+
+    // Make canvas full screen
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    resizeCanvas();
+    window.addEventListener("resize", resizeCanvas);
+
+    const letters = ["M", "y", " ", "L", "0", "v", "3"];
+    const fontSize = 20;
+    let columns = Math.floor(canvas.width / fontSize);
+    let drops = Array.from({ length: columns }, () => Math.random() * -100);
+    // Сердечки: массив для каждой колонки
+    let heartDrops = Array.from({ length: columns }, () => Math.random() * -100);
+
+    const clickPairs = [];
+
+    // Добавляем надпись и сердечко вместе при клике
+    window.addEventListener("click", (e) => {
+      clickPairs.push({
+        x: e.clientX,
+        y: e.clientY,
+        opacity: 1,
+        vy: 1.2,
+        text: "My L0v3",
+        heartOffset: 80, // смещение сердечка вправо
+        fontSize: 32 + Math.random() * 6
+      });
+      socket.emit('click', { x: e.clientX, y: e.clientY });
+    });
+
+    socket.on('click', (data) => {
+      // Добавляем клик от другого пользователя
+      clickPairs.push({
+        x: data.x,
+        y: data.y,
+        opacity: 1,
+        vy: 1.2,
+        text: "My L0v3",
+        heartOffset: 80,
+        fontSize: 32 + Math.random() * 6
+      });
+    });
+
+    function draw() {
+      // Менее размытый шлейф
+      ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = "#ff69b4";
+      ctx.font = `${fontSize}px monospace`;
+      columns = Math.floor(canvas.width / fontSize);
+      if (drops.length !== columns) {
+        drops = Array.from({ length: columns }, () => Math.random() * -100);
+      }
+
+      for (let i = 0; i < drops.length; i++) {
+        const text = letters[Math.floor(Math.random() * letters.length)];
+        const x = i * fontSize;
+        const y = Math.floor(drops[i]) * fontSize;
+        ctx.fillText(text, x, y);
+        if (y > canvas.height && Math.random() > 0.975) {
+          drops[i] = 0;
+        } else {
+          drops[i] += 0.5; // чуть быстрее
+        }
+      }
+
+      // Сердечки падают вниз по тем же колонкам
+      for (let i = 0; i < heartDrops.length; i++) {
+        const x = i * fontSize + fontSize / 3;
+        const y = Math.floor(heartDrops[i]) * fontSize;
+        ctx.save();
+        ctx.font = `bold ${fontSize}px monospace`;
+        ctx.globalAlpha = 0.8;
+        ctx.fillStyle = "#ff69b4";
+        ctx.fillText("❤", Math.round(x), Math.round(y));
+        ctx.restore();
+        if (y > canvas.height && Math.random() > 0.98) {
+          heartDrops[i] = 0;
+        } else {
+          heartDrops[i] += 0.45 + Math.random() * 0.1; // чуть разная скорость
+        }
+      }
+
+      // Рисуем пары "надпись + сердечко", которые плывут вниз
+      clickPairs.forEach((pair) => {
+        ctx.save();
+        ctx.globalAlpha = pair.opacity;
+        ctx.font = `bold ${pair.fontSize}px monospace`;
+        ctx.fillStyle = "#ff69b4";
+        ctx.fillText(pair.text, Math.round(pair.x), Math.round(pair.y));
+        ctx.font = `bold ${Math.round(pair.fontSize * 1.1)}px monospace`;
+        ctx.fillText("❤", Math.round(pair.x + pair.heartOffset), Math.round(pair.y));
+        ctx.restore();
+        pair.y += pair.vy;
+        pair.opacity -= 0.008;
+      });
+      // Удаляем исчезнувшие пары
+      for (let i = clickPairs.length - 1; i >= 0; i--) {
+        if (clickPairs[i].opacity <= 0) {
+          clickPairs.splice(i, 1);
+        }
+      }
+    }
+
+    setInterval(draw, 50);
+  </script>
+</body>
+</html>
